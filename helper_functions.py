@@ -70,9 +70,13 @@ def neighbor_joining(distances: np.ndarray, labels: list) -> Node:
         A root node of the neighbor joining tree.
 
     """
-    
-    self.tree = Node()
 
+    working_distances = distances.copy()
+    working_labels = labels.copy()
+
+    #calculate the row sums of the distance matrix
+    r_sums = working_distances.sum(axis=1)
+    
     raise NotImplementedError()
 
 
