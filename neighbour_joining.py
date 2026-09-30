@@ -88,8 +88,14 @@ def neighbor_joining(distances: np.ndarray, labels: list) -> Node:
 
         return q
 
+    # create copies of the distances and labels to avoid modifying the original inputs
     working_distances = distances.copy()
     working_labels = labels.copy()
+
+    # initialize the leaf nodes
+    working_nodes = {}
+    for label in working_labels:
+        working_nodes[label] = Node(label, None, 0, None, 0)
 
     while len(working_labels) > 2:
         #1. Based on the current distance matrix, calculate the Q-matrix
@@ -98,19 +104,84 @@ def neighbor_joining(distances: np.ndarray, labels: list) -> Node:
         #2. Find the pair of nodes with the minimum Q value
         i, j = np.unravel_index(np.argmin(q_matrix), q_matrix.shape)
 
-        #3. Make a new node that joins the nodes i and j, and connect the new node to the central node. 
+        #get the labels of the nodes to be joined
+        label_i = working_labels[i]
+        label_j = working_labels[j]
 
-        # Calculate the distance from the new node to each of the joined nodes
+        new_label = label_i + label_j
 
+        #3. Calculate the distance from the new node to each of the joined nodes
+        i_distance = 1/2 * working_distances[i, j] + (1/(2*(len(working_labels)-2))) * (working_distances[i, :].sum() - working_distances[j, :].sum())
+        j_distance = working_distances[i, j] - i_distance
+
+        #4. Make a new node that joins the nodes i and j, and connect the new node to the central node.
+        node_joined = Node(new_label, 
+                           working_nodes[label_i], 
+                           i_distance, 
+                           working_nodes[label_j], 
+                           j_distance)
+        
+        working_nodes[new_label] = node_joined
+        
         # Calculate the distances to the new node
+        new_distances = []
 
-        # Create a new label for the joined node
+        for k in range(len(working_labels)):
+            if k == i or k == j:
+                continue
+
+            distance = (
+                working_distances[i, k]
+                + working_distances[j, k]
+                - working_distances[i, j]
+            ) / 2
+
+            new_distances.append(distance)
 
         # Update the distance matrix and labels
+        new_matrix = np.zeros(
+            (len(working_labels) - 1, len(working_labels) - 1)
+        )
+        #identify the remaining indices after removing i and j
+        remaining = [
+            k for k in range(len(working_labels))
+            if k != i and k != j
+        ]
+        #fill in the new distance matrix with the distances to the new node
+        for new_i, old_i in enumerate(remaining):
+            for new_j, old_j in enumerate(remaining):
+                new_matrix[new_i, new_j] = working_distances[old_i, old_j]
+        #add the new node to the end of the distance matrix
+        for new_k, distance in enumerate(new_distances):
+            new_matrix[new_k, -1] = distance
+            new_matrix[-1, new_k] = distance
 
-    q_matrix = calculate_q_matrix(working_distances)
+        #update the working distances and labels
+        working_distances = new_matrix
+        remaining_labels = [
+            working_labels[k]
+            for k in remaining
+        ]
+        remaining_labels.append(new_label)
+        working_labels = remaining_labels
 
-    print("Q-matrix:\n", q_matrix)
+        #join final two nodes and return the root
+    
+    #join final two nodes and return the root
+    label_i = working_labels[0]
+    label_j = working_labels[1]
+
+    root_distance = working_distances[0, 1] / 2
+
+    root = Node(
+        "ROOT",
+        working_nodes[label_i],
+        root_distance,
+        working_nodes[label_j],
+        root_distance
+    )
+
+    return root
 
 ############################################ break ############################################
 
